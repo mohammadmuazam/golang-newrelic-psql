@@ -40,7 +40,7 @@ Other supported APIs:
 
 ## Output in Newrelic
 
-<img src="./output.png" alt="result" />
+<a href="https://ibb.co/gPs2Xnc"><img src="https://i.ibb.co/qWbS4Z2/output.png" alt="output" border="0"></a>
 
 ## Reference
 
