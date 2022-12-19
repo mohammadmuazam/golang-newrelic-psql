@@ -41,7 +41,7 @@ func main() {
 
 	app, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("batman"),
-		newrelic.ConfigLicense("YOUR_LICENSE_KEY"),
+		newrelic.ConfigLicense("NEW_RELIC_LICENSE_KEY"),
 		newrelic.ConfigDistributedTracerEnabled(true),
 	)
 	if err != nil {
@@ -54,10 +54,11 @@ func main() {
 
 	r.Use(newrelicMiddleware(app))
 
-	r.Post("/", Create)
-	r.Get("/", Get)
-	r.Patch("/{id}", Update)
-	r.Delete("/{id}", Delete)
+	r.Post("/products/", Create)
+	r.Get("/products/", GetAll)
+	r.Get("/products/{id}", Get)
+	r.Patch("/products/{id}", Update)
+	r.Delete("/products/{id}", Delete)
 
 	log.Print("Server started on port 3000")
 	http.ListenAndServe(":3000", r)
@@ -89,6 +90,9 @@ func ConnectPostgres() {
 
 	database = db
 }
+
+// @desc: Create a Product
+// @route: POST /products
 
 func Create(w http.ResponseWriter, r *http.Request) {
 	tracedDB := r.Context().Value("tracedDB").(*gorm.DB)
@@ -122,7 +126,10 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func Get(w http.ResponseWriter, r *http.Request) {
+// @desc: Get All Products
+// @route: GET /products
+
+func GetAll(w http.ResponseWriter, r *http.Request) {
 	tracedDB := r.Context().Value("tracedDB").(*gorm.DB)
 	var products []Product
 	tracedDB.Find(&products)
@@ -130,6 +137,33 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(products)
 }
+
+// @desc: Get a Product
+// @route: GET /products/:id
+
+func Get(w http.ResponseWriter, r *http.Request) {
+	tracedDB := r.Context().Value("tracedDB").(*gorm.DB)
+	paramId := chi.URLParam(r, "id")
+	var product Product
+	id, _ := strconv.Atoi(paramId)
+	tracedDB.First(&product, &Product{
+		Id: id,
+	})
+	if product.Id == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(resposne{
+			Message: "Product not found",
+		})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(product)
+}
+
+// @desc: Update a Product
+// @route: PATCH /products/:id
 
 func Update(w http.ResponseWriter, r *http.Request) {
 	tracedDB := r.Context().Value("tracedDB").(*gorm.DB)
@@ -166,6 +200,9 @@ func Update(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @desc: Delete a Product
+// @route: DELETE /products/:id
+
 func Delete(w http.ResponseWriter, r *http.Request) {
 	tracedDB := r.Context().Value("tracedDB").(*gorm.DB)
 	paramId := chi.URLParam(r, "id")
@@ -190,7 +227,7 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// middleware
+// middleware to add newrelic transaction to the context
 func newrelicMiddleware(app *newrelic.Application) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
