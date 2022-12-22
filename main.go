@@ -237,6 +237,8 @@ func newrelicMiddleware(app *newrelic.Application) func(http.Handler) http.Handl
 			gormTransactionContext := newrelic.NewContext(ctx, gormTransactionTrace)
 			tracedDB := database.WithContext(gormTransactionContext)
 			ctx = context.WithValue(ctx, "tracedDB", tracedDB)
+			w = gormTransactionTrace.SetWebResponse(w)
+			gormTransactionTrace.SetWebRequestHTTP(r)
 			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
